@@ -69,6 +69,10 @@ Left: layout in Uxandi. Right: UI an agent built from the export.
 
 <p align="center"><sub><b>Strategy game HUD</b> · 1920 × 1080 · 123 boxes · game art: Codex</sub></p>
 
+![Browser screenshot of a repository page: layout in Uxandi, then the page an agent built from the export](media/examples/repo-page.jpg)
+
+<p align="center"><sub><b>Repo page from a screenshot</b> · browser, 1920 × 1080 · 211 boxes · icons: Codex</sub></p>
+
 ## Use cases
 
 Uxandi does one objective thing: it tells an agent where something is on a screen and what it is. Shapes mark the place, notes say what it means, the export gives exact positions.
