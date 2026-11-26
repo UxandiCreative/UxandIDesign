@@ -69,9 +69,9 @@ Left: layout in Uxandi. Right: UI an agent built from the export.
 
 <p align="center"><sub><b>Strategy game HUD</b> · 1920 × 1080 · 123 boxes · game art: Codex</sub></p>
 
-![Browser screenshot of a repository page: layout in Uxandi, then the page an agent built from the export](media/examples/repo-page.jpg)
+![Web browser screenshot: layout in Uxandi, then the page an agent built from the export](media/examples/repo-page.jpg)
 
-<p align="center"><sub><b>Repo page from a screenshot</b> · browser, 1920 × 1080 · 211 boxes · icons: Codex</sub></p>
+<p align="center"><sub><b>Web browser screenshot</b> · 1920 × 1080 · 211 boxes · icons: Codex</sub></p>
 
 ## Use cases
 
