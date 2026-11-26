@@ -409,6 +409,11 @@ class MainWindow(QMainWindow):
         self._dirty(self.doc.dirty)
         return True
 
+    def changeEvent(self, e):
+        super().changeEvent(e)
+        if e.type() == e.Type.WindowStateChange and self.isMinimized():
+            self.board.drop_caches()     # the kept board picture is rebuilt when the window comes back
+
     def closeEvent(self, e):
         self._save_session()
         if getattr(self, "bridge", None):

@@ -57,25 +57,49 @@ class Doc(QObject):
         return self.page.get(sid)
 
     def selected(self) -> list[Shape]:
-        out = []
-        for sid in self.selection:
-            s = self.page.get(sid)
-            if s:
-                out.append(s)
-        return out
+        if not self.selection:
+            return []
+        shapes = self.page.shapes
+        if len(self.selection) == 1:
+            s = self.page.get(self.selection[0])
+            return [s] if s else []
+        by = {s.id: s for s in shapes}          # one pass, not one search per selected shape
+        return [by[i] for i in self.selection if i in by]
 
     def set_selection(self, ids) -> None:
-        ids = [i for i in dict.fromkeys(ids) if self.page.get(i)]
+        have = {s.id for s in self.page.shapes}
+        ids = [i for i in dict.fromkeys(ids) if i in have]
         if ids != self.selection:
             self.selection = ids
             self.selection_changed.emit()
+
+    # ------------------------------------------------------------------ saved state (dirty check)
+    @property
+    def _saved(self) -> str:
+        return self._saved_text
+
+    @_saved.setter
+    def _saved(self, text: str) -> None:
+        self._saved_text = text
+        self._saved_obj = None          # parsed when first compared
+
+    def _is_dirty(self) -> bool:
+        if not self._saved_text:
+            return True
+        if self._saved_obj is None:
+            try:
+                self._saved_obj = json.loads(self._saved_text)
+            except ValueError:
+                self._saved_obj = {}
+        return self._last["project"] != self._saved_obj
 
     # ------------------------------------------------------------------ undo
     def _snapshot(self) -> dict:
         return {"project": self.project.to_dict(), "page": self.page_index, "sel": list(self.selection)}
 
     def _restore(self, snap: dict) -> None:
-        self.project = Project.from_dict(copy.deepcopy(snap["project"]))
+        # from_dict copies every list and dict it keeps, so the snapshot itself stays untouched
+        self.project = Project.from_dict(snap["project"])
         self.page_index = min(snap["page"], len(self.project.pages) - 1)
         self.selection = [i for i in snap["sel"] if self.page.get(i)]
         self._last = snap
@@ -87,8 +111,7 @@ class Doc(QObject):
     def commit(self, label: str = "", merge: str | None = None) -> None:
         """Call after every finished edit. Edits with the same `merge` key within a
         second become one undo step (arrow-key nudges, for instance)."""
-        self._touch_modified()
-        snap = self._snapshot()
+        snap = self._touch_modified()
         t = time.monotonic()
         if not (merge and merge == self._last_key and t - self._last_t < 1.0):
             self._undo.append(self._last)
@@ -101,23 +124,43 @@ class Doc(QObject):
         if label:
             self.status.emit(label)
 
-    def _touch_modified(self) -> None:
+    def _touch_modified(self) -> dict:
+        """Stamp shapes changed since the last step and return the new snapshot. A shape that did not
+        change keeps the very dict of the last snapshot (they are never edited), so each undo step only
+        holds what changed: hundreds of steps of a big page cost little memory."""
         before = {}
-        prev = self._last["project"]["pages"]
-        for p in prev:
+        prev_pages = {}
+        for p in self._last["project"]["pages"]:
+            prev_pages[p["id"]] = p
             for s in p["shapes"]:
                 before[s["id"]] = s
         stamp = now_iso()
-        for p in self.project.pages:
-            for s in p.shapes:
-                old = before.get(s.id)
+        pages = []
+        for pg in self.project.pages:
+            shapes = []
+            for s in pg.shapes:
                 d = s.to_dict()
-                if old is None:
-                    continue
-                a = dict(old); b = dict(d)
-                a.pop("modified", None); b.pop("modified", None)
-                if a != b:
-                    s.modified = stamp
+                old = before.get(s.id)
+                if old is not None:
+                    mine = d["modified"]
+                    d["modified"] = old.get("modified")
+                    if d == old:                         # nothing but (maybe) the stamp differs
+                        if mine == old.get("modified"):
+                            d = old                      # unchanged: share it
+                        else:
+                            d["modified"] = mine
+                    else:
+                        s.modified = stamp
+                        d["modified"] = stamp
+                shapes.append(d)
+            pd = {k: copy.deepcopy(getattr(pg, k)) for k in Page.KEYS}
+            pd["shapes"] = shapes
+            old_p = prev_pages.get(pg.id)
+            if old_p is not None and old_p == pd:
+                pd = old_p
+            pages.append(pd)
+        pr = self.project.to_dict_pages(pages)
+        return {"project": pr, "page": self.page_index, "sel": list(self.selection)}
 
     def undo(self) -> None:
         if not self._undo:
@@ -138,8 +181,7 @@ class Doc(QObject):
         self.status.emit("Redo")
 
     def _after_change(self) -> None:
-        cur = json.dumps(self._last["project"], sort_keys=True)
-        d = cur != self._saved
+        d = self._is_dirty()
         if d != self.dirty:
             self.dirty = d
             self.dirty_changed.emit(d)
@@ -322,6 +364,12 @@ class Doc(QObject):
         self.commit("Pages reordered")
 
     # ------------------------------------------------------------------ files
+    def _free_pictures(self) -> None:
+        """Another project is open: drop the decoded pictures only the old one used."""
+        from . import images
+        images.prune(s.contents.get("path") for pg in self.project.pages for s in pg.shapes
+                     if isinstance(s.contents, dict) and s.contents.get("type") == "image")
+
     def new_project(self) -> None:
         self.project = Project()
         self.path = None
@@ -331,6 +379,7 @@ class Doc(QObject):
         self._last = self._snapshot()
         self._saved = json.dumps(self._last["project"], sort_keys=True)
         self._after_change()
+        self._free_pictures()
         self.page_changed.emit(); self.structure.emit(); self.selection_changed.emit()
         self.status.emit("New project")
 
@@ -359,6 +408,7 @@ class Doc(QObject):
         self._last = self._snapshot()
         self._saved = json.dumps(self._last["project"], sort_keys=True)
         self._after_change()
+        self._free_pictures()
         self.page_changed.emit(); self.structure.emit(); self.selection_changed.emit()
         self.status.emit(f"Opened {self.path.name}")
 
@@ -372,12 +422,13 @@ class Doc(QObject):
         self._last = self._snapshot()
         self._saved = ""
         self._after_change()
+        self._free_pictures()
         self.page_changed.emit(); self.structure.emit(); self.selection_changed.emit()
 
     def save_session(self, ui: dict | None = None) -> None:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         old = {}
-        if SESSION_FILE.exists():
+        if ui is None and SESSION_FILE.exists():     # only read the old file when its UI part is kept
             try:
                 old = json.loads(SESSION_FILE.read_text(encoding="utf-8"))
             except Exception:

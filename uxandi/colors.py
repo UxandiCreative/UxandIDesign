@@ -351,7 +351,9 @@ class ColorPicker(QWidget):
 
     def _paint_preview(self):
         c = hex_of(self._color)
-        self.preview.setStyleSheet(f"background:{c};border:1px solid rgba(0,0,0,70);border-radius:{theme.px(4)}px;")
+        css = f"background:{c};border:1px solid rgba(0,0,0,70);border-radius:{theme.px(4)}px;"
+        if css != self.preview.styleSheet():         # re-styling costs: only when it changes
+            self.preview.setStyleSheet(css)
 
     def _emit(self, final):
         if final:

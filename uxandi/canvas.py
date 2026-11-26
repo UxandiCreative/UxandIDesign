@@ -15,6 +15,7 @@ Modifiers while dragging
 from __future__ import annotations
 
 import math
+from bisect import bisect_left
 
 from PySide6.QtCore import Qt, QPointF, QRectF, Signal, QTimer
 from PySide6.QtGui import (QPainter, QColor, QPen, QBrush, QPolygonF, QFont, QFontMetricsF,
@@ -28,6 +29,7 @@ from . import images
 from .images import image_of
 
 DRAG_MODES = ("move", "resize", "gresize", "rotate", "draw_rect", "draw_line", "line_end")
+LAYER_MODES = ("move", "resize", "gresize", "rotate", "radius", "line_end", "imgpan")   # drags that change shapes
 HANDLES = [(-1, -1), (1, -1), (1, 1), (-1, 1), (0, -1), (1, 0), (0, 1), (-1, 0)]
 DASH = {"solid": Qt.PenStyle.SolidLine, "dash": Qt.PenStyle.DashLine, "dot": Qt.PenStyle.DotLine}
 CAP = {"round": Qt.PenCapStyle.RoundCap, "flat": Qt.PenCapStyle.FlatCap, "square": Qt.PenCapStyle.SquareCap}
@@ -180,6 +182,20 @@ def render_thumb(page: Page, height: int, max_width: int) -> QPixmap:
     return pm
 
 
+def _fingerprint(shapes) -> list:
+    """Everything about these shapes that can change how they look, as plain values (cheap to compare):
+    every field, plus copies of a picture's settings and a drawing's points, which change in place."""
+    out = []
+    for s in shapes:
+        d = s.__dict__
+        t = tuple(d.values())
+        c, pts = d.get("contents"), d.get("points")
+        if c is not None or pts is not None:
+            t = (t, tuple(c.items()) if isinstance(c, dict) else c, tuple(map(tuple, pts)) if pts else None)
+        out.append(t)
+    return out
+
+
 def _dist(a: QPointF, b: QPointF) -> float:
     return math.hypot(a.x() - b.x(), a.y() - b.y())
 
@@ -222,6 +238,9 @@ class Board(QWidget):
         self.img_drag = False          # Design > Image > Drag image: dragging moves the picture inside its shape
         self.group_menu = None         # callable(global_pos, group id)
         self.group_rename = None       # callable(group id)
+        self._snap_cache = None        # (key, Snapper) reused while a drag lasts
+        self._scene = None             # (key, pixmap): everything under the overlay
+        self._layers = None            # (key, below, between, above pixmaps) while shapes are dragged
         doc.changed.connect(self.update)
         doc.structure.connect(self.update)
         doc.selection_changed.connect(self.update)
@@ -296,13 +315,20 @@ class Board(QWidget):
         self.setCursor(Qt.CursorShape.CrossCursor if t in ("rect", "ellipse", "line", "draw") else Qt.CursorShape.ArrowCursor)
 
     # ------------------------------------------------------------------ painting
-    def paintEvent(self, _):
-        p = QPainter(self)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    # The picture is built in this order: stage, paper, dots, margin band, every shape faint (it shows
+    # outside the canvas), every shape at full strength (clipped to the canvas), the overlay (selection,
+    # handles, guides, pills). Everything before the overlay is kept in pixmaps and drawn again only when
+    # it changes, so hovering, selecting or a selection box repaint just the overlay. While shapes are
+    # dragged, what lies below and above them in the stacking order is kept in three layers and only the
+    # dragged shapes are drawn each move. Layers are put together in the same order, so the result is
+    # the same picture.
+    def _clip_path(self) -> QPainterPath:
         rad = theme.px(8)
         clip = QPainterPath()
         clip.addRoundedRect(QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5), rad, rad)
-        p.setClipPath(clip)
+        return clip
+
+    def _paint_background(self, p: QPainter):
         p.fillRect(self.rect(), QColor(theme.STAGE))
         page = self.page
         z = self.zoom
@@ -318,20 +344,106 @@ class Board(QWidget):
             band = QPainterPath(); band.addRect(crect)
             inner = QPainterPath(); inner.addRect(QRectF(self.to_screen(l, t), self.to_screen(r, b)))
             p.fillPath(band.subtracted(inner), QColor(31, 111, 235, 14))
-        # shapes: faint outside the canvas, full strength inside
+
+    def _paint_pass(self, p: QPainter, shapes, faint: bool, extra=None):
+        """Shapes faint (showing outside the canvas) or at full strength (clipped to the canvas)."""
         p.save()
         p.translate(self.ox, self.oy)
-        p.scale(z, z)
-        p.setOpacity(0.28)
-        for s in page.shapes:
+        p.scale(self.zoom, self.zoom)
+        if faint:
+            p.setOpacity(0.28)
+        else:
+            p.setClipRect(QRectF(0, 0, self.page.width, self.page.height), Qt.ClipOperation.IntersectClip)
+        for s in shapes:
             paint_shape(p, s)
-        p.setOpacity(1.0)
-        p.setClipRect(QRectF(0, 0, page.width, page.height), Qt.ClipOperation.IntersectClip)
-        for s in page.shapes:
-            paint_shape(p, s)
-        if self.preview:
-            paint_shape(p, self.preview)
+        if extra is not None:
+            paint_shape(p, extra)
         p.restore()
+
+    def _view_key(self):
+        pg = self.page
+        return (self.width(), self.height(), self.devicePixelRatioF(), self.zoom, self.ox, self.oy, theme.S,
+                id(pg), pg.width, pg.height, pg.background, pg.dots, pg.dot_spacing, tuple(pg.margins),
+                pg.show_margins, theme.STAGE, theme.DOT)
+
+    def _layer(self, draw) -> QPixmap:
+        """A kept picture of the board. Drawn without the rounded clip: it is clipped when it is put on
+        screen, the same way the shapes were, so the rounded corners come out the same."""
+        dpr = self.devicePixelRatioF() or 1.0
+        pm = QPixmap(max(1, math.ceil(self.width() * dpr)), max(1, math.ceil(self.height() * dpr)))
+        pm.setDevicePixelRatio(dpr)
+        pm.fill(Qt.GlobalColor.transparent)
+        lp = QPainter(pm)
+        lp.setRenderHint(QPainter.RenderHint.Antialiasing)
+        # On screen the shapes are clipped by a path (the rounded board), which makes Qt clip the canvas
+        # edge the way it does for paths. The same rounded path, 2 px larger, keeps that and leaves every
+        # pixel the board clip touches whole (Qt drops a path clip that covers the whole pixmap).
+        rad = theme.px(8)
+        grown = QPainterPath()
+        grown.addRoundedRect(QRectF(self.rect()).adjusted(-1.5, -1.5, 1.5, 1.5), rad + 2, rad + 2)
+        lp.setClipPath(grown)
+        draw(lp)
+        lp.end()
+        return pm
+
+    def _moving_range(self):
+        """(first, last) stacking index of the shapes being dragged, or None."""
+        pr = self._press
+        if self.mode not in LAYER_MODES or not pr:
+            return None
+        ids = set(pr["orig"]) if "orig" in pr else ({pr["sid"]} if "sid" in pr else set())
+        idx = [i for i, s in enumerate(self.page.shapes) if s.id in ids]
+        return (idx[0], idx[-1]) if idx else None
+
+    def drop_caches(self):
+        """Free the kept pictures (they are rebuilt on the next paint)."""
+        self._scene = None
+        self._layers = None
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rad = theme.px(8)
+        clip = self._clip_path()
+        p.setClipPath(clip)
+        shapes = self.page.shapes
+        vk = self._view_key()
+        rng = self._moving_range()
+        if rng is not None:
+            lo, hi = rng
+            below, mid, above = shapes[:lo], shapes[lo:hi + 1], shapes[hi + 1:]
+            key = (vk, lo, hi, len(shapes), _fingerprint(below), _fingerprint(above))
+            if self._layers is None or self._layers[0] != key:
+                self._scene = None                      # stale while shapes move; frees its memory
+
+                def l1(lp):
+                    self._paint_background(lp); self._paint_pass(lp, below, True)
+
+                def l2(lp):
+                    self._paint_pass(lp, above, True); self._paint_pass(lp, below, False)
+                self._layers = (key, self._layer(l1), self._layer(l2),
+                                self._layer(lambda lp: self._paint_pass(lp, above, False)) if above else None)
+            _, L1, L2, L3 = self._layers
+            p.drawPixmap(0, 0, L1)
+            self._paint_pass(p, mid, True)
+            p.drawPixmap(0, 0, L2)
+            self._paint_pass(p, mid, False)
+            if L3 is not None:
+                p.drawPixmap(0, 0, L3)
+            if self.preview:
+                self._paint_pass(p, [], False, self.preview)
+        else:
+            self._layers = None
+            key = (vk, len(shapes), _fingerprint(shapes))
+            if self._scene is None or self._scene[0] != key:
+                def full(lp):
+                    self._paint_background(lp)
+                    self._paint_pass(lp, shapes, True)
+                    self._paint_pass(lp, shapes, False)
+                self._scene = (key, self._layer(full))
+            p.drawPixmap(0, 0, self._scene[1])
+            if self.preview:
+                self._paint_pass(p, [], False, self.preview)
         p.setClipPath(clip)
         self._paint_overlay(p)
         # frame
@@ -476,9 +588,18 @@ class Board(QWidget):
             cand_y += [ob[1], (ob[1] + ob[3]) / 2, ob[3]]
         W, H = self.page.width, self.page.height
         cand_x.append(W / 2); cand_y.append(H / 2)
-        xs = sorted({round(v, 3) for v in cand_x if any(abs(v - m) < 0.5 for m in mine_x)})
-        ys = sorted({round(v, 3) for v in cand_y if any(abs(v - m) < 0.5 for m in mine_y)})
-        return xs, ys
+
+        def near(cand, mine):
+            cand.sort()
+            out = set()
+            for m in mine:
+                k = bisect_left(cand, m - 0.5 - 1e-6)
+                while k < len(cand) and cand[k] <= m + 0.5 + 1e-6:
+                    if abs(cand[k] - m) < 0.5:
+                        out.add(round(cand[k], 3))
+                    k += 1
+            return sorted(out)
+        return near(cand_x, mine_x), near(cand_y, mine_y)
 
     # ------------------------------------------------------------------ group pills (bottom-left, fixed)
     def _pill_font(self):
@@ -733,7 +854,15 @@ class Board(QWidget):
     def _snapper(self, exclude, mods=None) -> Snapper:
         mods = QApplication.keyboardModifiers() if mods is None else mods
         enabled = not (mods & Qt.KeyboardModifier.ControlModifier)
-        return Snapper(self.page, set(exclude), self.doc.snap, self.zoom, enabled)
+        # A drag asks for a snapper on every mouse move, but the shapes it snaps to stand still until the
+        # next undo step (a commit), so one snapper serves the whole drag.
+        ex = frozenset(exclude)
+        key = (ex, enabled, self.zoom, id(self.page), len(self.page.shapes), id(self.doc._last),
+               tuple(sorted(self.doc.snap.to_dict().items())))
+        c = self._snap_cache
+        if c is None or c[0] != key:
+            c = self._snap_cache = (key, Snapper(self.page, set(ex), self.doc.snap, self.zoom, enabled))
+        return c[1]
 
     @property
     def grid_on(self) -> bool:
@@ -996,8 +1125,8 @@ class Board(QWidget):
             x0, y0 = pr["c"]
             self.marquee = (x0, y0, cx, cy)
             l, r = sorted((x0, cx)); t, b = sorted((y0, cy))
-            hit = [s.id for s in self.page.shapes
-                   if not (s.aabb()[2] < l or s.aabb()[0] > r or s.aabb()[3] < t or s.aabb()[1] > b)]
+            hit = [s.id for s, bb in ((s, s.aabb()) for s in self.page.shapes)
+                   if not (bb[2] < l or bb[0] > r or bb[3] < t or bb[1] > b)]
             self.doc.set_selection(pr["base"] + [i for i in hit if i not in pr["base"]])
             self.update()
             return
@@ -1368,6 +1497,7 @@ class Board(QWidget):
         mode, pr = self.mode, self._press
         self.mode = None
         self._press = None
+        self._snap_cache = None
         self._set_snap(None)
         self.drag_label = None
         self.marquee = None
@@ -1573,6 +1703,7 @@ class Board(QWidget):
         self.marquee = None
         self.drag_label = None
         self._set_snap(None)
+        self._snap_cache = None
         self.doc.changed.emit()
 
     def focusOutEvent(self, e):

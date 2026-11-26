@@ -10,7 +10,7 @@ import copy
 import math
 import time
 import uuid
-from dataclasses import dataclass, field, asdict, fields
+from dataclasses import dataclass, field, fields
 
 FORMAT_VERSION = 1
 
@@ -92,23 +92,22 @@ class Shape:
     contents: dict | None = None       # reserved: what goes inside the shape (programmed later)
 
     # ---------------------------------------------------------------- dict io
+    # The same dict dataclasses.asdict gives (field order, copies of the lists and dicts inside), built
+    # directly: asdict walks every value recursively and was most of the cost of each undo step.
     def to_dict(self) -> dict:
-        d = asdict(self)
-        if self.kind == "line":
-            for k in ("x", "y", "w", "h", "rotation", "radius", "lock_ratio", "fill", "points"):
-                d.pop(k, None)
-        elif self.kind == "path":
-            for k in ("x1", "y1", "x2", "y2", "radius", "fill"):
-                d.pop(k, None)
-        else:
-            for k in ("x1", "y1", "x2", "y2", "line_style", "cap", "points"):
-                d.pop(k, None)
+        keys = _LINE_KEYS if self.kind == "line" else _PATH_KEYS if self.kind == "path" else _BOX_KEYS
+        d = {k: getattr(self, k) for k in keys}
+        if "points" in d and d["points"] is not None:
+            d["points"] = [list(p) for p in d["points"]]
+        if d["contents"] is not None:
+            d["contents"] = copy.deepcopy(d["contents"])
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "Shape":
-        names = {f.name for f in fields(cls)}
-        s = cls(**{k: v for k, v in d.items() if k in names})
+        s = cls(**{k: v for k, v in d.items() if k in _FIELD_SET})
+        if s.points is not None:
+            s.points = [list(p) for p in s.points]     # never shares lists with an undo snapshot
         s.contents = copy.deepcopy(s.contents)
         return s
 
@@ -236,6 +235,13 @@ class Shape:
         c = self.corners()
         mids = [((c[i][0] + c[(i + 1) % 4][0]) / 2, (c[i][1] + c[(i + 1) % 4][1]) / 2) for i in range(4)]
         return c + mids + [self.center()]
+
+
+_FIELDS = tuple(f.name for f in fields(Shape))
+_FIELD_SET = frozenset(_FIELDS)
+_LINE_KEYS = tuple(k for k in _FIELDS if k not in ("x", "y", "w", "h", "rotation", "radius", "lock_ratio", "fill", "points"))
+_PATH_KEYS = tuple(k for k in _FIELDS if k not in ("x1", "y1", "x2", "y2", "radius", "fill"))
+_BOX_KEYS = tuple(k for k in _FIELDS if k not in ("x1", "y1", "x2", "y2", "line_style", "cap", "points"))
 
 
 def simplify(pts: list, eps: float) -> list:
@@ -479,8 +485,12 @@ class Project:
     brief: str = ""                    # what the project is, style and rules for the agent (Brief tab)
 
     def to_dict(self) -> dict:
+        return self.to_dict_pages([p.to_dict() for p in self.pages])
+
+    def to_dict_pages(self, pages: list) -> dict:
+        """to_dict with the page dicts already made."""
         return {"format": "uxandi", "version": FORMAT_VERSION, "name": self.name, "brief": self.brief,
-                "created": self.created, "pages": [p.to_dict() for p in self.pages]}
+                "created": self.created, "pages": pages}
 
     @classmethod
     def from_dict(cls, d: dict) -> "Project":

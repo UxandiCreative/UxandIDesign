@@ -180,11 +180,16 @@ class Swatch(QPushButton):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self._c = "#000000"
+        self._styled = False
         self._alpha = alpha
         self.clicked.connect(self._pick)
 
     def set_color(self, c: str):
-        self._c = c or "#000000"
+        c = c or "#000000"
+        if c == self._c and self._styled:
+            return                     # a new style sheet re-styles the button: only when the colour changes
+        self._c = c
+        self._styled = True
         col = QColor(self._c)
         self.setStyleSheet(f"QPushButton#Swatch{{background:{col.name(QColor.NameFormat.HexArgb if col.alpha() < 255 else QColor.NameFormat.HexRgb)};"
                            f"border:1px solid rgba(0,0,0,66);}}")
@@ -849,10 +854,13 @@ class ShapePanel(DocPanel):
         rects = [s for s in sel if not s.is_line]
         lines = [s for s in sel if s.is_line]
         one = sel[0] if len(sel) == 1 else None
+        # each row is set to where it ends up once (hiding then showing it again re-lays out the column)
         self.empty.setVisible(not has)
-        for w in (self.name_f, self.fx, self.fy, self.size_row, self.lock, self.end_row):
+        for w in (self.name_f, self.fx, self.fy):
             w.setVisible(has)
         if not has:
+            for w in (self.size_row, self.lock, self.end_row):
+                w.setVisible(False)
             self.info.setText("")
             return
         kind = {"rect": "rectangle", "path": "drawing"}.get(one.kind, one.kind) if one else f"{len(sel)} shapes"
@@ -1054,10 +1062,11 @@ class DetailsPanel(DocPanel):
             self.grid.addWidget(v, r, 1)
             self.rows.append((k, v))
         for i, (k, v) in enumerate(self.rows):
-            if i < len(items):
-                k.setText(items[i][0]); v.setText(items[i][1]); k.show(); v.show()
-            else:
-                k.hide(); v.hide()
+            on = i < len(items)
+            if on:
+                k.setText(items[i][0]); v.setText(items[i][1])
+            if k.isHidden() == on:          # show / hide only rows that change
+                k.setVisible(on); v.setVisible(on)
 
     def refresh(self):
         if self.isHidden() or self.shut:
@@ -1167,16 +1176,22 @@ class ShapesPanel(DocPanel):
         pass
 
     def rebuild(self):
-        self._busy = True
-        self.list.blockSignals(True)
-        self.list.clear()
-        for s in reversed(self.doc.page.shapes):
-            it = QListWidgetItem({"line": "╱  ", "path": "✎  ", "ellipse": "◯  "}.get(s.kind, "▭  ") + (s.name or s.id))
-            it.setData(Qt.ItemDataRole.UserRole, s.id)
-            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsDragEnabled)
-            self.list.addItem(it)
-        self.list.blockSignals(False)
-        self._busy = False
+        rows = [({"line": "╱  ", "path": "✎  ", "ellipse": "◯  "}.get(s.kind, "▭  ") + (s.name or s.id), s.id)
+                for s in reversed(self.doc.page.shapes)]
+        same = len(rows) == self.list.count() and all(
+            self.list.item(i).data(Qt.ItemDataRole.UserRole) == sid and self.list.item(i).text() == text
+            for i, (text, sid) in enumerate(rows))
+        if not same:                       # (an undo of a move, for instance, leaves the list as it is)
+            self._busy = True
+            self.list.blockSignals(True)
+            self.list.clear()
+            for text, sid in rows:
+                it = QListWidgetItem(text)
+                it.setData(Qt.ItemDataRole.UserRole, sid)
+                it.setFlags(it.flags() | Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsDragEnabled)
+                self.list.addItem(it)
+            self.list.blockSignals(False)
+            self._busy = False
         self.sync_sel()
         rows = max(4, min(14, self.list.count()))
         self.list.setFixedHeight(int(rows * (theme.px(13) + theme.px(12)) + theme.px(8)))
@@ -1189,7 +1204,8 @@ class ShapesPanel(DocPanel):
         for i in range(self.list.count()):
             it = self.list.item(i)
             on = it.data(Qt.ItemDataRole.UserRole) in ids
-            it.setSelected(on)
+            if it.isSelected() != on:      # touch only the rows that change
+                it.setSelected(on)
             if on:
                 last = it
         if last:

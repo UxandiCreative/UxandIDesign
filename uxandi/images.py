@@ -15,6 +15,7 @@ FITS = [("fill", "Fill (cover the shape, crop the rest)"), ("fit", "Fit (whole p
         ("stretch", "Stretch (to the shape)"), ("original", "Original size")]
 
 _cache: dict[str, QPixmap] = {}
+_sizes: dict[str, tuple[int, int]] = {}
 
 
 def resolve(rel: str) -> Path:
@@ -50,9 +51,23 @@ def pixmap(rel: str) -> QPixmap | None:
 
 
 def size_of(rel: str) -> tuple[int, int] | None:
+    """Pixel size of a picture file (read from its header once: files are named by their content)."""
+    if rel in _sizes:
+        return _sizes[rel]
     r = QImageReader(str(resolve(rel)))
     s = r.size()
-    return (s.width(), s.height()) if s.isValid() else None
+    out = (s.width(), s.height()) if s.isValid() else None
+    if out:                     # a missing file is asked again next time (it may come back)
+        _sizes[rel] = out
+    return out
+
+
+def prune(keep) -> None:
+    """Forget the pictures no shape in `keep` (paths) uses, so a project that was closed frees their memory.
+    They are read again from disk if they come back (undo, reopening)."""
+    keep = set(keep)
+    for k in [k for k in _cache if k not in keep]:
+        del _cache[k]
 
 
 def new_contents(rel: str, original_name: str) -> dict:
