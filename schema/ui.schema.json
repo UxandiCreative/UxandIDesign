@@ -1,0 +1,1173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/UxandiCreative/UxandIDesign/main/schema/ui.schema.json",
+  "title": "Uxandi export",
+  "description": "A layout made in Uxandi, for the agent that builds the real UI: pages (canvases with real screen sizes) holding rectangles, ellipses, lines and freehand drawings. Names and notes carry the meaning; boxes and styles carry the geometry.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "description": "This schema's URL.",
+      "type": "string"
+    },
+    "format": {
+      "const": "uxandi-export"
+    },
+    "version": {
+      "const": 1
+    },
+    "tool": {
+      "type": "string"
+    },
+    "exported": {
+      "description": "Local time, YYYY-MM-DDTHH:MM:SS.",
+      "type": "string"
+    },
+    "how_to_read": {
+      "description": "Plain-language reading guide, also for agents that never saw this schema.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "brief": {
+          "description": "What the product is, who it is for, style and rules.",
+          "type": "string"
+        },
+        "page_count": {
+          "type": "integer"
+        },
+        "created": {
+          "type": "string"
+        },
+        "layout_snapped_to_dots": {
+          "description": "The user had dot snapping on: sizes and gaps are multiples of the dot spacing.",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "name",
+        "brief",
+        "page_count",
+        "created",
+        "layout_snapped_to_dots"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "element_count": {
+          "type": "integer"
+        },
+        "elements_with_notes": {
+          "type": "integer"
+        },
+        "elements_without_notes_count": {
+          "type": "integer"
+        },
+        "elements_without_notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "page_name": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "page",
+              "page_name",
+              "id",
+              "name",
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "brief_empty": {
+          "type": "boolean"
+        },
+        "pages_without_notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "page_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "page",
+              "page_name"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "element_count",
+        "elements_with_notes",
+        "elements_without_notes_count",
+        "elements_without_notes",
+        "brief_empty",
+        "pages_without_notes"
+      ],
+      "additionalProperties": false
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/page"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "tool",
+    "exported",
+    "how_to_read",
+    "project",
+    "summary",
+    "pages"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "box": {
+      "description": "A box in canvas pixels; x, y = top-left.",
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "width": {
+          "type": "number"
+        },
+        "height": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "additionalProperties": false
+    },
+    "point": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "canvas": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "description": "Canvas width, px.",
+          "type": "integer"
+        },
+        "height": {
+          "description": "Canvas height, px.",
+          "type": "integer"
+        },
+        "device": {
+          "description": "The device family of the preset.",
+          "enum": [
+            "Desktop",
+            "iPad",
+            "Phone",
+            "Custom"
+          ]
+        },
+        "preset": {
+          "description": "Preset name, or Custom.",
+          "type": "string"
+        },
+        "orientation": {
+          "enum": [
+            "portrait",
+            "landscape",
+            "square"
+          ]
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "device",
+        "preset",
+        "orientation",
+        "background"
+      ],
+      "additionalProperties": false
+    },
+    "image": {
+      "description": "A picture shown inside the element, clipped to its rounded box.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "image"
+        },
+        "file": {
+          "description": "Picture file, relative to the export JSON (images/<name>).",
+          "type": "string"
+        },
+        "original_name": {
+          "type": "string"
+        },
+        "pixel_size": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fit": {
+          "description": "fill = cover the box and crop; fit = whole picture inside; stretch = scaled to the box; original = 1 image px per canvas px.",
+          "enum": [
+            "fill",
+            "fit",
+            "stretch",
+            "original"
+          ]
+        },
+        "zoom": {
+          "type": "number"
+        },
+        "offset": {
+          "description": "Moves the picture's centre from the box centre, px.",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "file",
+        "fit",
+        "zoom",
+        "offset",
+        "opacity"
+      ],
+      "additionalProperties": false
+    },
+    "tree_node": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tree_node"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "children"
+      ],
+      "additionalProperties": false
+    },
+    "page": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "description": "Page number, 1 = first.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "description": "What this screen is for.",
+          "type": "string"
+        },
+        "canvas": {
+          "$ref": "#/$defs/canvas"
+        },
+        "margins": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "number"
+            },
+            "right": {
+              "type": "number"
+            },
+            "bottom": {
+              "type": "number"
+            },
+            "left": {
+              "type": "number"
+            },
+            "safe_area": {
+              "$ref": "#/$defs/box"
+            },
+            "content_kept_inside": {
+              "description": "The app keeps shapes inside the margins.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "top",
+            "right",
+            "bottom",
+            "left",
+            "safe_area",
+            "content_kept_inside"
+          ],
+          "additionalProperties": false
+        },
+        "grid": {
+          "type": "object",
+          "properties": {
+            "dot_spacing": {
+              "description": "Dot grid spacing, px: the layout's base unit.",
+              "type": "integer"
+            },
+            "dots_visible": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "dot_spacing",
+            "dots_visible"
+          ],
+          "additionalProperties": false
+        },
+        "element_count": {
+          "type": "integer"
+        },
+        "elements_without_notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "type"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "member_names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "bounds": {
+                "$ref": "#/$defs/box"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "members",
+              "member_names",
+              "bounds"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "layout_tree": {
+          "description": "The nesting as a tree, back to front.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/tree_node"
+          }
+        },
+        "elements": {
+          "description": "Every element in stacking order (back first).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        }
+      },
+      "required": [
+        "index",
+        "id",
+        "name",
+        "notes",
+        "canvas",
+        "margins",
+        "grid",
+        "element_count",
+        "elements_without_notes",
+        "groups",
+        "layout_tree",
+        "elements"
+      ],
+      "additionalProperties": false
+    },
+    "element": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/rect_element"
+        },
+        {
+          "$ref": "#/$defs/line_element"
+        },
+        {
+          "$ref": "#/$defs/path_element"
+        }
+      ]
+    },
+    "rect_element": {
+      "description": "A rectangle, square, ellipse or circle: a container. A heading, label, button or image is a container whose name and notes say what it is.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable id, unique on the page.",
+          "type": "string"
+        },
+        "name": {
+          "description": "What the element is (\"Header\", \"Sign in button\"). Unique on the page in a good layout.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text the user (or the designing agent) wrote: what the element is, the text it shows, behaviour, states, data.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Name of the user's group it belongs to, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "z": {
+          "description": "Stacking order: 1 is at the back, higher is drawn on top.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "parent": {
+          "description": "Id of the smallest rectangle whose box holds this one completely, or null (on the canvas).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "children": {
+          "description": "Ids of the elements directly inside it, back to front.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relative": {
+          "description": "The visual box as % of the canvas width and height.",
+          "type": "object",
+          "properties": {
+            "x_pct": {
+              "type": "number"
+            },
+            "y_pct": {
+              "type": "number"
+            },
+            "width_pct": {
+              "type": "number"
+            },
+            "height_pct": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_pct",
+            "y_pct",
+            "width_pct",
+            "height_pct"
+          ],
+          "additionalProperties": false
+        },
+        "inside_safe_area": {
+          "description": "The visual box lies inside the page margins.",
+          "type": "boolean"
+        },
+        "flipped": {
+          "type": "object",
+          "properties": {
+            "horizontal": {
+              "type": "boolean"
+            },
+            "vertical": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "horizontal",
+            "vertical"
+          ],
+          "additionalProperties": false
+        },
+        "contents": {
+          "description": "What is inside the element: null, or a picture. Other object types are reserved for later versions.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        },
+        "type": {
+          "description": "square / circle: width and height are equal (within half a pixel). ellipse / circle: the oval filling the box.",
+          "enum": [
+            "rectangle",
+            "square",
+            "ellipse",
+            "circle"
+          ]
+        },
+        "bounds": {
+          "description": "The element's own box before rotation.",
+          "$ref": "#/$defs/box"
+        },
+        "rotation_degrees": {
+          "description": "Clockwise, about the centre.",
+          "type": "number"
+        },
+        "visual_bounds": {
+          "description": "The box it covers after rotation.",
+          "$ref": "#/$defs/box"
+        },
+        "center": {
+          "$ref": "#/$defs/point"
+        },
+        "style": {
+          "description": "Colours are #RRGGBB; null means none. Opacity 1 = solid.",
+          "type": "object",
+          "properties": {
+            "fill": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fill_opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "border_color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "border_opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "border_width": {
+              "description": "px, inside the box. 0 = no border.",
+              "type": "number"
+            },
+            "corner_radius": {
+              "description": "px.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "fill",
+            "fill_opacity",
+            "border_color",
+            "border_opacity",
+            "border_width",
+            "corner_radius"
+          ],
+          "additionalProperties": false
+        },
+        "keeps_proportions": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "notes",
+        "group",
+        "z",
+        "parent",
+        "children",
+        "relative",
+        "inside_safe_area",
+        "flipped",
+        "contents",
+        "created",
+        "modified",
+        "type",
+        "bounds",
+        "rotation_degrees",
+        "visual_bounds",
+        "center",
+        "style",
+        "keeps_proportions"
+      ],
+      "additionalProperties": false
+    },
+    "line_element": {
+      "description": "A line: a divider, connector or rule.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable id, unique on the page.",
+          "type": "string"
+        },
+        "name": {
+          "description": "What the element is (\"Header\", \"Sign in button\"). Unique on the page in a good layout.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text the user (or the designing agent) wrote: what the element is, the text it shows, behaviour, states, data.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Name of the user's group it belongs to, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "z": {
+          "description": "Stacking order: 1 is at the back, higher is drawn on top.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "parent": {
+          "description": "Id of the smallest rectangle whose box holds this one completely, or null (on the canvas).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "children": {
+          "description": "Ids of the elements directly inside it, back to front.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relative": {
+          "description": "The visual box as % of the canvas width and height.",
+          "type": "object",
+          "properties": {
+            "x_pct": {
+              "type": "number"
+            },
+            "y_pct": {
+              "type": "number"
+            },
+            "width_pct": {
+              "type": "number"
+            },
+            "height_pct": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_pct",
+            "y_pct",
+            "width_pct",
+            "height_pct"
+          ],
+          "additionalProperties": false
+        },
+        "inside_safe_area": {
+          "description": "The visual box lies inside the page margins.",
+          "type": "boolean"
+        },
+        "flipped": {
+          "type": "object",
+          "properties": {
+            "horizontal": {
+              "type": "boolean"
+            },
+            "vertical": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "horizontal",
+            "vertical"
+          ],
+          "additionalProperties": false
+        },
+        "contents": {
+          "description": "What is inside the element: null, or a picture. Other object types are reserved for later versions.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        },
+        "type": {
+          "const": "line"
+        },
+        "line": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/point"
+            },
+            "end": {
+              "$ref": "#/$defs/point"
+            },
+            "length": {
+              "type": "number"
+            },
+            "angle_degrees": {
+              "description": "-180..180, 0 = pointing right.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "start",
+            "end",
+            "length",
+            "angle_degrees"
+          ],
+          "additionalProperties": false
+        },
+        "visual_bounds": {
+          "$ref": "#/$defs/box"
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "thickness": {
+              "type": "number"
+            },
+            "dash": {
+              "enum": [
+                "solid",
+                "dash",
+                "dot"
+              ]
+            },
+            "ends": {
+              "enum": [
+                "round",
+                "flat",
+                "square"
+              ]
+            }
+          },
+          "required": [
+            "color",
+            "opacity",
+            "thickness",
+            "dash",
+            "ends"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "notes",
+        "group",
+        "z",
+        "parent",
+        "children",
+        "relative",
+        "inside_safe_area",
+        "flipped",
+        "contents",
+        "created",
+        "modified",
+        "type",
+        "line",
+        "visual_bounds",
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "path_element": {
+      "description": "A freehand stroke the user drew. Never holds other elements; its notes say what it means.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "Stable id, unique on the page.",
+          "type": "string"
+        },
+        "name": {
+          "description": "What the element is (\"Header\", \"Sign in button\"). Unique on the page in a good layout.",
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text the user (or the designing agent) wrote: what the element is, the text it shows, behaviour, states, data.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Name of the user's group it belongs to, or null.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "z": {
+          "description": "Stacking order: 1 is at the back, higher is drawn on top.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "parent": {
+          "description": "Id of the smallest rectangle whose box holds this one completely, or null (on the canvas).",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "children": {
+          "description": "Ids of the elements directly inside it, back to front.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "relative": {
+          "description": "The visual box as % of the canvas width and height.",
+          "type": "object",
+          "properties": {
+            "x_pct": {
+              "type": "number"
+            },
+            "y_pct": {
+              "type": "number"
+            },
+            "width_pct": {
+              "type": "number"
+            },
+            "height_pct": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x_pct",
+            "y_pct",
+            "width_pct",
+            "height_pct"
+          ],
+          "additionalProperties": false
+        },
+        "inside_safe_area": {
+          "description": "The visual box lies inside the page margins.",
+          "type": "boolean"
+        },
+        "flipped": {
+          "type": "object",
+          "properties": {
+            "horizontal": {
+              "type": "boolean"
+            },
+            "vertical": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "horizontal",
+            "vertical"
+          ],
+          "additionalProperties": false
+        },
+        "contents": {
+          "description": "What is inside the element: null, or a picture. Other object types are reserved for later versions.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        },
+        "type": {
+          "const": "path"
+        },
+        "path": {
+          "type": "object",
+          "properties": {
+            "points": {
+              "description": "Canvas points in drawing order, rotation and flips applied.",
+              "type": "array",
+              "items": {
+                "description": "[x, y] in canvas pixels.",
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "points"
+          ],
+          "additionalProperties": false
+        },
+        "bounds": {
+          "description": "The box the drawing was made in, before rotation.",
+          "$ref": "#/$defs/box"
+        },
+        "rotation_degrees": {
+          "type": "number"
+        },
+        "visual_bounds": {
+          "description": "The area the stroke covers.",
+          "$ref": "#/$defs/box"
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "thickness": {
+              "type": "number"
+            },
+            "dash": {
+              "enum": [
+                "solid",
+                "dash",
+                "dot"
+              ]
+            },
+            "ends": {
+              "enum": [
+                "round",
+                "flat",
+                "square"
+              ]
+            }
+          },
+          "required": [
+            "color",
+            "opacity",
+            "thickness",
+            "dash",
+            "ends"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "notes",
+        "group",
+        "z",
+        "parent",
+        "children",
+        "relative",
+        "inside_safe_area",
+        "flipped",
+        "contents",
+        "created",
+        "modified",
+        "type",
+        "path",
+        "bounds",
+        "rotation_degrees",
+        "visual_bounds",
+        "style"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

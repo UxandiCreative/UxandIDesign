@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "uxandi": {
+      "command": "python",
+      "args": ["${workspaceFolder}/uxandi_agent.py", "mcp"]
+    }
+  }
+}

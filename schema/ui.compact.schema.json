@@ -1,0 +1,752 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/UxandiCreative/UxandIDesign/main/schema/ui.compact.schema.json",
+  "title": "Uxandi compact export",
+  "description": "The compact form of the Uxandi export: the same facts with empty, default and derivable values left out (see how_to_read for every default).",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": "uxandi-export"
+    },
+    "version": {
+      "const": 1
+    },
+    "compact": {
+      "const": true
+    },
+    "tool": {
+      "type": "string"
+    },
+    "exported": {
+      "type": "string"
+    },
+    "how_to_read": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "brief": {
+          "type": "string"
+        },
+        "page_count": {
+          "type": "integer"
+        },
+        "layout_snapped_to_dots": {
+          "const": true
+        }
+      },
+      "required": [
+        "name",
+        "brief",
+        "page_count"
+      ],
+      "additionalProperties": false
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "element_count": {
+          "type": "integer"
+        },
+        "elements_without_notes_count": {
+          "type": "integer"
+        },
+        "brief_empty": {
+          "type": "boolean"
+        },
+        "pages_without_notes": {
+          "description": "Page numbers.",
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        }
+      },
+      "required": [
+        "element_count",
+        "elements_without_notes_count",
+        "brief_empty",
+        "pages_without_notes"
+      ],
+      "additionalProperties": false
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/page"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "compact",
+    "tool",
+    "exported",
+    "how_to_read",
+    "project",
+    "summary",
+    "pages"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "xy": {
+      "description": "[x, y] in canvas pixels.",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "xywh": {
+      "description": "[x, y, width, height] in canvas pixels.",
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "point": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "additionalProperties": false
+    },
+    "canvas": {
+      "type": "object",
+      "properties": {
+        "width": {
+          "description": "Canvas width, px.",
+          "type": "integer"
+        },
+        "height": {
+          "description": "Canvas height, px.",
+          "type": "integer"
+        },
+        "device": {
+          "description": "The device family of the preset.",
+          "enum": [
+            "Desktop",
+            "iPad",
+            "Phone",
+            "Custom"
+          ]
+        },
+        "preset": {
+          "description": "Preset name, or Custom.",
+          "type": "string"
+        },
+        "orientation": {
+          "enum": [
+            "portrait",
+            "landscape",
+            "square"
+          ]
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "device",
+        "preset",
+        "orientation",
+        "background"
+      ],
+      "additionalProperties": false
+    },
+    "image": {
+      "description": "A picture shown inside the element, clipped to its rounded box.",
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "image"
+        },
+        "file": {
+          "description": "Picture file, relative to the export JSON (images/<name>).",
+          "type": "string"
+        },
+        "original_name": {
+          "type": "string"
+        },
+        "pixel_size": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "width": {
+                  "type": "integer"
+                },
+                "height": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "width",
+                "height"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fit": {
+          "description": "fill = cover the box and crop; fit = whole picture inside; stretch = scaled to the box; original = 1 image px per canvas px.",
+          "enum": [
+            "fill",
+            "fit",
+            "stretch",
+            "original"
+          ]
+        },
+        "zoom": {
+          "type": "number"
+        },
+        "offset": {
+          "description": "Moves the picture's centre from the box centre, px.",
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "file",
+        "fit",
+        "zoom",
+        "offset",
+        "opacity"
+      ],
+      "additionalProperties": false
+    },
+    "page": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "canvas": {
+          "$ref": "#/$defs/canvas"
+        },
+        "margins": {
+          "type": "object",
+          "properties": {
+            "top": {
+              "type": "number"
+            },
+            "right": {
+              "type": "number"
+            },
+            "bottom": {
+              "type": "number"
+            },
+            "left": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "top",
+            "right",
+            "bottom",
+            "left"
+          ],
+          "additionalProperties": false
+        },
+        "grid": {
+          "type": "object",
+          "properties": {
+            "dot_spacing": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "dot_spacing"
+          ],
+          "additionalProperties": false
+        },
+        "element_count": {
+          "type": "integer"
+        },
+        "elements_without_notes": {
+          "description": "Names of elements whose notes are empty.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "name",
+              "members"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "elements": {
+          "description": "Stacking order: the first is at the back.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/element"
+          }
+        }
+      },
+      "required": [
+        "index",
+        "id",
+        "name",
+        "canvas",
+        "grid",
+        "element_count",
+        "elements"
+      ],
+      "additionalProperties": false
+    },
+    "element": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/rect_element"
+        },
+        {
+          "$ref": "#/$defs/line_element"
+        },
+        {
+          "$ref": "#/$defs/path_element"
+        }
+      ]
+    },
+    "rect_element": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text the user (or the designing agent) wrote: what the element is, the text it shows, behaviour, states, data.",
+          "type": "string"
+        },
+        "parent": {
+          "description": "Id of the element whose box holds this one. Left out: on the canvas.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Name of the user's group. Left out: none.",
+          "type": "string"
+        },
+        "outside_safe_area": {
+          "description": "Only given when the element is not inside the page margins.",
+          "const": true
+        },
+        "flipped": {
+          "type": "object",
+          "properties": {
+            "horizontal": {
+              "const": true
+            },
+            "vertical": {
+              "const": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "contents": {
+          "description": "What is inside the element: null, or a picture. Other object types are reserved for later versions.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "type": {
+          "description": "Left out: rectangle. ellipse / circle: the oval filling the box.",
+          "enum": [
+            "rectangle",
+            "square",
+            "ellipse",
+            "circle"
+          ]
+        },
+        "box": {
+          "description": "The own box before rotation.",
+          "$ref": "#/$defs/xywh"
+        },
+        "rotation_degrees": {
+          "type": "number"
+        },
+        "visual_box": {
+          "description": "The box it covers after rotation (rotated elements only).",
+          "$ref": "#/$defs/xywh"
+        },
+        "style": {
+          "description": "Only what is set: no fill = no 'fill'; no border = no 'border_color'.",
+          "type": "object",
+          "properties": {
+            "fill": {
+              "type": "string",
+              "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+            },
+            "fill_opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "border_color": {
+              "type": "string",
+              "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+            },
+            "border_width": {
+              "type": "number"
+            },
+            "border_opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "corner_radius": {
+              "type": "number"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "keeps_proportions": {
+          "const": true
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "box"
+      ],
+      "additionalProperties": false
+    },
+    "line_element": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text the user (or the designing agent) wrote: what the element is, the text it shows, behaviour, states, data.",
+          "type": "string"
+        },
+        "parent": {
+          "description": "Id of the element whose box holds this one. Left out: on the canvas.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Name of the user's group. Left out: none.",
+          "type": "string"
+        },
+        "outside_safe_area": {
+          "description": "Only given when the element is not inside the page margins.",
+          "const": true
+        },
+        "flipped": {
+          "type": "object",
+          "properties": {
+            "horizontal": {
+              "const": true
+            },
+            "vertical": {
+              "const": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "contents": {
+          "description": "What is inside the element: null, or a picture. Other object types are reserved for later versions.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "type": {
+          "const": "line"
+        },
+        "line": {
+          "type": "object",
+          "properties": {
+            "start": {
+              "$ref": "#/$defs/xy"
+            },
+            "end": {
+              "$ref": "#/$defs/xy"
+            }
+          },
+          "required": [
+            "start",
+            "end"
+          ],
+          "additionalProperties": false
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "thickness": {
+              "type": "number"
+            },
+            "opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "dash": {
+              "enum": [
+                "dash",
+                "dot"
+              ]
+            },
+            "ends": {
+              "enum": [
+                "flat",
+                "square"
+              ]
+            }
+          },
+          "required": [
+            "color",
+            "thickness"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "line",
+        "style"
+      ],
+      "additionalProperties": false
+    },
+    "path_element": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "description": "Text the user (or the designing agent) wrote: what the element is, the text it shows, behaviour, states, data.",
+          "type": "string"
+        },
+        "parent": {
+          "description": "Id of the element whose box holds this one. Left out: on the canvas.",
+          "type": "string"
+        },
+        "group": {
+          "description": "Name of the user's group. Left out: none.",
+          "type": "string"
+        },
+        "outside_safe_area": {
+          "description": "Only given when the element is not inside the page margins.",
+          "const": true
+        },
+        "flipped": {
+          "type": "object",
+          "properties": {
+            "horizontal": {
+              "const": true
+            },
+            "vertical": {
+              "const": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "contents": {
+          "description": "What is inside the element: null, or a picture. Other object types are reserved for later versions.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "type": {
+          "const": "path"
+        },
+        "points": {
+          "description": "Canvas points in drawing order, rotation and flips applied.",
+          "type": "array",
+          "items": {
+            "description": "[x, y] in canvas pixels.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "minItems": 1
+        },
+        "style": {
+          "type": "object",
+          "properties": {
+            "color": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "thickness": {
+              "type": "number"
+            },
+            "opacity": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 1
+            },
+            "dash": {
+              "enum": [
+                "dash",
+                "dot"
+              ]
+            },
+            "ends": {
+              "enum": [
+                "flat",
+                "square"
+              ]
+            }
+          },
+          "required": [
+            "color",
+            "thickness"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "type",
+        "points",
+        "style"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

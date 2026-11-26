@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.idea/
+tools/_check/
+
+# user content: created by the app on first use, never committed
+data/
+projects/
+exports/
+assets/
+templates/
+
+# agent / session notes, local only
+docs/

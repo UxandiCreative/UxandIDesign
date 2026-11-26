@@ -1,0 +1,486 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/UxandiCreative/UxandIDesign/main/schema/project.schema.json",
+  "title": "Uxandi project (.uxandi)",
+  "description": "A saved project: pages and their shapes, as the app stores them (canvas pixels, colours #RRGGBB or #AARRGGBB).",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "uxandi"
+    },
+    "version": {
+      "const": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "brief": {
+      "type": "string"
+    },
+    "created": {
+      "type": "string"
+    },
+    "pages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/page"
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "name",
+    "pages"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "image": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "image"
+        },
+        "path": {
+          "description": "Relative to the app folder (assets/images/<hash>.<ext>).",
+          "type": "string"
+        },
+        "original_name": {
+          "type": "string"
+        },
+        "fit": {
+          "enum": [
+            "fill",
+            "fit",
+            "stretch",
+            "original"
+          ]
+        },
+        "zoom": {
+          "type": "number"
+        },
+        "dx": {
+          "type": "number"
+        },
+        "dy": {
+          "type": "number"
+        },
+        "opacity": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "path"
+      ],
+      "additionalProperties": true
+    },
+    "page": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "width": {
+          "type": "integer"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "preset": {
+          "type": "string"
+        },
+        "background": {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+        },
+        "dots": {
+          "type": "boolean"
+        },
+        "dot_spacing": {
+          "type": "integer"
+        },
+        "margins": {
+          "description": "[top, right, bottom, left], px.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "margins_linked": {
+          "type": "boolean"
+        },
+        "show_margins": {
+          "type": "boolean"
+        },
+        "keep_inside": {
+          "type": "boolean"
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "members": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "members"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "notes": {
+          "type": "string"
+        },
+        "shapes": {
+          "description": "Stacking order: back first.",
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/rect"
+              },
+              {
+                "$ref": "#/$defs/line"
+              },
+              {
+                "$ref": "#/$defs/path"
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "name",
+        "id",
+        "width",
+        "height",
+        "shapes"
+      ],
+      "additionalProperties": false
+    },
+    "rect": {
+      "description": "A rectangle, or an ellipse (the oval filling the box; radius unused). fill \"\" = no fill; stroke_width 0 = no border.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "rect",
+            "ellipse"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "stroke": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+            },
+            {
+              "const": ""
+            }
+          ]
+        },
+        "stroke_width": {
+          "type": "number"
+        },
+        "flip_h": {
+          "type": "boolean"
+        },
+        "flip_v": {
+          "type": "boolean"
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        },
+        "contents": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "w": {
+          "type": "number"
+        },
+        "h": {
+          "type": "number"
+        },
+        "rotation": {
+          "type": "number"
+        },
+        "radius": {
+          "type": "number"
+        },
+        "lock_ratio": {
+          "type": "boolean"
+        },
+        "fill": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+            },
+            {
+              "const": ""
+            }
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "additionalProperties": false
+    },
+    "line": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "line"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "stroke": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+            },
+            {
+              "const": ""
+            }
+          ]
+        },
+        "stroke_width": {
+          "type": "number"
+        },
+        "flip_h": {
+          "type": "boolean"
+        },
+        "flip_v": {
+          "type": "boolean"
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        },
+        "contents": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "x1": {
+          "type": "number"
+        },
+        "y1": {
+          "type": "number"
+        },
+        "x2": {
+          "type": "number"
+        },
+        "y2": {
+          "type": "number"
+        },
+        "line_style": {
+          "enum": [
+            "solid",
+            "dash",
+            "dot"
+          ]
+        },
+        "cap": {
+          "enum": [
+            "round",
+            "flat",
+            "square"
+          ]
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "x1",
+        "y1",
+        "x2",
+        "y2"
+      ],
+      "additionalProperties": false
+    },
+    "path": {
+      "description": "A freehand stroke: its box (x, y, w, h, rotation) and its points as fractions of that box.",
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "path"
+        },
+        "name": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "stroke": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+            },
+            {
+              "const": ""
+            }
+          ]
+        },
+        "stroke_width": {
+          "type": "number"
+        },
+        "flip_h": {
+          "type": "boolean"
+        },
+        "flip_v": {
+          "type": "boolean"
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        },
+        "contents": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/image"
+            },
+            {
+              "type": "object"
+            }
+          ]
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "w": {
+          "type": "number"
+        },
+        "h": {
+          "type": "number"
+        },
+        "rotation": {
+          "type": "number"
+        },
+        "lock_ratio": {
+          "type": "boolean"
+        },
+        "line_style": {
+          "enum": [
+            "solid",
+            "dash",
+            "dot"
+          ]
+        },
+        "cap": {
+          "enum": [
+            "round",
+            "flat",
+            "square"
+          ]
+        },
+        "points": {
+          "type": "array",
+          "items": {
+            "description": "[u, v]: 0..1 across the box.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 2,
+            "maxItems": 2
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "x",
+        "y",
+        "w",
+        "h",
+        "points"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

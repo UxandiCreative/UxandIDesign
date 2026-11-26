@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "uxandi": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["${workspaceFolder}/uxandi_agent.py", "mcp"]
+    }
+  }
+}

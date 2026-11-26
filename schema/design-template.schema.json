@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/UxandiCreative/UxandIDesign/main/schema/design-template.schema.json",
+  "title": "Uxandi style template",
+  "description": "A Design tab style (templates/design/<name>.json). Shapes take it with \"template\": \"<name>\".",
+  "type": "object",
+  "properties": {
+    "format": {
+      "const": "uxandi-template"
+    },
+    "name": {
+      "type": "string"
+    },
+    "fill": {
+      "description": "\"\" = no fill.",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+        },
+        {
+          "const": ""
+        }
+      ]
+    },
+    "stroke": {
+      "type": "string",
+      "pattern": "^#([0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$"
+    },
+    "stroke_width": {
+      "type": "number"
+    },
+    "radius": {
+      "type": "number"
+    },
+    "line_style": {
+      "enum": [
+        "solid",
+        "dash",
+        "dot"
+      ]
+    },
+    "cap": {
+      "enum": [
+        "round",
+        "flat",
+        "square"
+      ]
+    },
+    "image": {
+      "anyOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "path": {
+              "description": "Relative to the app folder (assets/images/<hash>.<ext>).",
+              "type": "string"
+            },
+            "original_name": {
+              "type": "string"
+            },
+            "fit": {
+              "enum": [
+                "fill",
+                "fit",
+                "stretch",
+                "original"
+              ]
+            },
+            "zoom": {
+              "type": "number"
+            },
+            "dx": {
+              "type": "number"
+            },
+            "dy": {
+              "type": "number"
+            },
+            "opacity": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "type",
+            "path"
+          ],
+          "additionalProperties": true
+        }
+      ]
+    },
+    "saved": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "format"
+  ],
+  "additionalProperties": false
+}
