@@ -71,7 +71,9 @@ Left: layout in Uxandi. Right: UI an agent built from the export.
 
 ## Use cases
 
-Any task where an agent needs to know what goes where. Shapes mark areas, notes say what they are, the export gives exact positions.
+Uxandi does one objective thing: it tells an agent where something is on a screen and what it is. Shapes mark the place, notes say what it means, the export gives exact positions.
+
+Anything that information can drive is a use case. The lists below are a starting point, not a limit.
 
 ### Core
 | Use | Shapes and notes |
