@@ -1,7 +1,5 @@
 # Uxandi
 
-Layout canvas for agentic workflows. Place nested shapes with exact positions and plain-language notes, then export them as structured data any agent can read.
-
 Design tooling turns the layout into rules. Prompt-based context, programmatic placement.
 
 Any project, framework or language. The agent only needs the JSON.
