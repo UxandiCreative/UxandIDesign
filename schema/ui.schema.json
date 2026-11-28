@@ -453,6 +453,10 @@
               "name": {
                 "type": "string"
               },
+              "notes": {
+                "description": "What the group as a whole is and does, written by the user. Separate from its members' notes.",
+                "type": "string"
+              },
               "members": {
                 "type": "array",
                 "items": {
@@ -472,6 +476,7 @@
             "required": [
               "id",
               "name",
+              "notes",
               "members",
               "member_names",
               "bounds"

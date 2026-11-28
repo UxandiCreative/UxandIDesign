@@ -1025,6 +1025,9 @@ def picture_rows(s):
 
 
 
+NOTES_H = 260          # height of the notes box in Details (before UI scale)
+
+
 class DetailsPanel(DocPanel):
     def __init__(self, win):
         cp = button("Copy", "Copy the selected shape's details as JSON", "Small")
@@ -1034,7 +1037,7 @@ class DetailsPanel(DocPanel):
         self.notes = QPlainTextEdit()
         self.notes.setPlaceholderText("Write anything about this shape…")
         self.notes.setTabChangesFocus(True)
-        self.notes.setFixedHeight(theme.px(84))
+        self.notes.setFixedHeight(theme.px(NOTES_H))
         self.notes.textChanged.connect(self._notes_typed)
         self.notes_f = field("notes", self.notes)
         self.b.addWidget(self.notes_f)
@@ -1043,14 +1046,52 @@ class DetailsPanel(DocPanel):
         self._notes_timer.setSingleShot(True)
         self._notes_timer.setInterval(500)
         self._notes_timer.timeout.connect(self._notes_save)
+        # a whole group selected: the group's own notes (kept on the group, apart from its shapes' notes)
+        self.gnotes = QPlainTextEdit()
+        self.gnotes.setPlaceholderText("Write anything about this group as a whole…")
+        self.gnotes.setTabChangesFocus(True)
+        self.gnotes.setFixedHeight(theme.px(NOTES_H))
+        self.gnotes.textChanged.connect(self._gnotes_typed)
+        self.gnotes_l = label("group notes")
+        self.gnotes_f = QWidget()
+        gv = QVBoxLayout(self.gnotes_f)
+        gv.setContentsMargins(0, 0, 0, 0)
+        gv.setSpacing(2)
+        gv.addWidget(self.gnotes_l)
+        gv.addWidget(self.gnotes)
+        self.gnotes_f.setVisible(False)
+        self.b.addWidget(self.gnotes_f)
+        self._gnotes_id = None
+        self._gnotes_timer = QTimer(self)
+        self._gnotes_timer.setSingleShot(True)
+        self._gnotes_timer.setInterval(500)
+        self._gnotes_timer.timeout.connect(self._gnotes_save)
         self.grid = QGridLayout()
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setHorizontalSpacing(theme.px(10))
         self.grid.setVerticalSpacing(theme.px(3))
         self.grid.setColumnStretch(1, 1)
-        holder = QWidget(); holder.setLayout(self.grid)
-        self.b.addWidget(holder)
+        # the numbers below the notes fold away under their own header (click it); remembered with the session
+        self.more_open = True
+        self.more_t = label("", "FieldLabel")
+        self.more_t.setWordWrap(False)
+        self.more_t.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.more_t.setToolTip("Click: show or hide the shape's properties")
+        self.more_t.mousePressEvent = lambda e: self.set_more(not self.more_open, user=True)
+        self.b.addWidget(self.more_t)
+        self.holder = QWidget(); self.holder.setLayout(self.grid)
+        self.b.addWidget(self.holder)
         self.rows = []
+        self.set_more(True)
+
+    def set_more(self, on, user=False):
+        self.more_open = bool(on)
+        self.more_t.setText(("▾  " if self.more_open else "▸  ") + "properties")
+        self.holder.setVisible(self.more_open)
+        if user:
+            self.refresh()
+            if self.on_fold:
+                self.on_fold()
 
     def _rows(self, items):
         while len(self.rows) < len(items):
@@ -1078,12 +1119,28 @@ class DetailsPanel(DocPanel):
             self._notes_save()                       # keep what was typed for the last shape
         self.notes_f.setVisible(one is not None)
         if one is not None:
-            self.notes.setFixedHeight(theme.px(84))
+            self.notes.setFixedHeight(theme.px(NOTES_H))
             if one.id != self._notes_id or (not self.notes.hasFocus() and self.notes.toPlainText() != one.notes):
                 self.notes.blockSignals(True)
                 self.notes.setPlainText(one.notes)
                 self.notes.blockSignals(False)
         self._notes_id = one.id if one else None
+        ids = {s.id for s in sel}
+        grp = next((g for g in pg.groups if ids and set(g["members"]) == ids), None)
+        if (grp["id"] if grp else None) != self._gnotes_id:
+            self._gnotes_save()                      # keep what was typed for the last group
+        self.gnotes_f.setVisible(grp is not None)
+        if grp is not None:
+            self.gnotes.setFixedHeight(theme.px(NOTES_H))
+            self.gnotes_l.setText(f"group notes · {grp['name']}")
+            gtext = grp.get("notes") or ""
+            if grp["id"] != self._gnotes_id or (not self.gnotes.hasFocus() and self.gnotes.toPlainText() != gtext):
+                self.gnotes.blockSignals(True)
+                self.gnotes.setPlainText(gtext)
+                self.gnotes.blockSignals(False)
+        self._gnotes_id = grp["id"] if grp else None
+        if not self.more_open:                       # folded: skip building the rows nobody sees
+            return
         W, H = pg.width, pg.height
         f = lambda v: f"{v:.1f}".rstrip("0").rstrip(".")
         pct = lambda v, t: f"{100 * v / t:.2f}%"
@@ -1093,7 +1150,8 @@ class DetailsPanel(DocPanel):
                      ("selection", "none")]
         elif len(sel) > 1:
             b = union_box(s.aabb() for s in sel)
-            items = [("selected", f"{len(sel)} shapes"), ("bounds x, y", f"{f(b[0])}, {f(b[1])}"),
+            items = [("selected", f"{len(sel)} shapes"), *([("group", grp["name"])] if grp else []),
+                     ("bounds x, y", f"{f(b[0])}, {f(b[1])}"),
                      ("bounds size", f"{f(b[2] - b[0])} × {f(b[3] - b[1])}"),
                      ("centre", f"{f((b[0] + b[2]) / 2)}, {f((b[1] + b[3]) / 2)}"),
                      ("names", ", ".join(s.name or s.id for s in sel))]
@@ -1146,8 +1204,22 @@ class DetailsPanel(DocPanel):
         self._notes_timer.stop()
         self.doc.commit("Notes", merge="notes")
 
+    def _gnotes_typed(self):
+        g = self.doc.page.get_group(self._gnotes_id) if self._gnotes_id else None
+        if g is None:
+            return
+        g["notes"] = self.gnotes.toPlainText()
+        self._gnotes_timer.start()
+
+    def _gnotes_save(self):
+        if not self._gnotes_timer.isActive():
+            return
+        self._gnotes_timer.stop()
+        self.doc.commit("Group notes", merge="gnotes")
+
     def _copy(self):
         self._notes_save()
+        self._gnotes_save()
         sel = self.doc.selected()
         data = [s.to_dict() for s in sel] if sel else self.doc.page.to_dict()
         if isinstance(data, list) and len(data) == 1:

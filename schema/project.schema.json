@@ -138,6 +138,9 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "notes": {
+                "type": "string"
               }
             },
             "required": [

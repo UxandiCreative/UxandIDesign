@@ -112,6 +112,7 @@ QScrollBar::add-line, QScrollBar::sub-line, QScrollBar::add-page, QScrollBar::su
 QPlainTextEdit {{ border: 1px solid {LINE_2}; border-radius: {px(4)}px; background: {SURFACE};
   padding: {px(4)}px {px(6)}px; selection-background-color: {ACCENT}; selection-color: #fff; }}
 QPlainTextEdit:focus {{ border-color: {ACCENT}; }}
+QPlainTextEdit[linked="true"] {{ border: 2px solid {SEL}; padding: {px(4) - 1}px {px(6) - 1}px; }}
 QListWidget {{ border: 1px solid {LINE_2}; border-radius: {px(4)}px; background: {SURFACE}; outline: 0; }}
 QListWidget::item {{ padding: {px(3)}px {px(6)}px; border-radius: {px(3)}px; }}
 QListWidget::item:selected {{ background: {ACCENT}; color: #fff; }}

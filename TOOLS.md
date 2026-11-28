@@ -400,13 +400,14 @@ Copy shapes, each with everything inside it (with_children: false copies the sha
 
 #### `set_group`
 
-Make or change a named group of shapes (a shape is in one group at most). An empty shapes list removes the group (the shapes stay).
+Make or change a named group of shapes (a shape is in one group at most). An empty shapes list removes the group (the shapes stay). notes: what the group as a whole is and does, kept apart from its members' own notes. Leave shapes out to change only the notes of an existing group.
 
 | Argument | Type | Description |
 |---|---|---|
 | `page` | integer or string | Page number (1 = first), name or id. Leave out for the page on screen. |
 | `name` (required) | string |  |
-| `shapes` (required) | array of string | Shape ids or names. |
+| `shapes` | array of string | Shape ids or names. |
+| `notes` | string | What the group as a whole is and does. Its members keep their own notes. |
 
 ### Layout
 

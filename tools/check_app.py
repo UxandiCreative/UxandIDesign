@@ -315,6 +315,56 @@ doc.set_selection([d2.id]); app.processEvents(); w.refresh_panels()
 check(dp.notes.toPlainText() == "", "another shape shows its own (empty) notes")
 doc.set_selection([d1.id]); app.processEvents(); w.refresh_panels()
 check(dp.notes.toPlainText().startswith("Hero"), "notes come back when the shape is selected again")
+from uxandi import theme as _theme  # noqa: E402
+check(dp.notes.height() >= _theme.px(200), "notes box is large")
+dp.set_more(False, user=True); app.processEvents()
+check(not dp.holder.isVisible() and dp.notes_f.isVisible() and w.ui_state()["details_more"] is False,
+      "properties under the notes fold away, notes stay, fold is kept with the session")
+dp.set_more(True, user=True); app.processEvents()
+check(dp.holder.isVisible() and any(r_[0].text() == "name" for r_ in dp.rows if not r_[0].isHidden()),
+      "properties unfold and show the shape again")
+
+# group notes: a whole group selected shows the group's own notes, apart from its shapes' notes
+doc.set_selection([d1.id, d2.id]); app.processEvents()
+gN = doc.group_selection(); app.processEvents(); w.refresh_panels(); app.processEvents()
+check(dp.gnotes_f.isVisible() and not dp.notes_f.isVisible() and gN["name"] in dp.gnotes_l.text(),
+      "selecting a whole group shows its group notes box")
+dp.gnotes.setPlainText("Hero area: banner and its caption, one block.")
+dp._gnotes_save()
+check(doc.page.get_group(gN["id"])["notes"].startswith("Hero area") and doc.page.get(d1.id).notes.startswith("Hero banner")
+      and doc.page.get(d2.id).notes == "", "group notes are stored on the group; the shapes keep their own notes")
+doc.set_selection([d1.id]); app.processEvents(); w.refresh_panels(); app.processEvents()
+check(not dp.gnotes_f.isVisible() and dp.notes.toPlainText().startswith("Hero banner"),
+      "one shape of the group shows only that shape's notes")
+doc.select_group(gN["id"]); app.processEvents(); w.refresh_panels(); app.processEvents()
+check(dp.gnotes.toPlainText().startswith("Hero area"), "group notes come back when the group is selected again")
+path3 = doc.save(docmod.PROJECTS_DIR / "gnotes.uxandi"); doc.load(path3)
+check(doc.page.groups and doc.page.groups[-1].get("notes", "").startswith("Hero area"), "group notes survive save and load")
+from uxandi.export import build_export as _bx, compact_export as _cx  # noqa: E402
+_fx = _bx(doc.project)
+check(any(g_.get("notes", "").startswith("Hero area") for g_ in _fx["pages"][doc.page_index]["groups"])
+      and any(g_.get("notes", "").startswith("Hero area") for g_ in _cx(_fx)["pages"][doc.page_index].get("groups", [])),
+      "group notes are in the full and compact export")
+# marching ants: from the selection into its notes box
+doc.set_selection([d1.id]); app.processEvents(); w.refresh_panels(); app.processEvents(); w.links.relook()
+_lk = w.links
+_nb = dp.notes.mapTo(w, dp.notes.rect().topLeft())
+check(_lk._outline is not None and _lk._link is not None and abs(_lk._link.currentPosition().x() - _nb.x()) < 1.5,
+      "one shape: ants round it and a line of ants into its notes box")
+check(dp.notes.property("linked") is True and not dp.gnotes.property("linked"), "its notes box border is lit")
+check(_lk.geometry() == w.rect() and not _lk._region.isEmpty() and _lk._region.boundingRect().width() < w.width(),
+      "the ants repaint only strips along their lines")
+shot("09b_notes_link")
+doc.select_group(doc.page.groups[-1]["id"]); app.processEvents(); w.refresh_panels(); app.processEvents(); w.links.relook()
+_gb = dp.gnotes.mapTo(w, dp.gnotes.rect().topLeft())
+check(_lk._link is not None and abs(_lk._link.currentPosition().x() - _gb.x()) < 1.5,
+      "a whole group: ants round the group and into the group notes box")
+check(dp.gnotes.property("linked") is True and not dp.notes.property("linked"), "the group notes box border is lit instead")
+shot("09c_group_link")
+doc.set_selection([]); app.processEvents(); w.refresh_panels(); app.processEvents(); w.links.relook()
+check(_lk._outline is None and _lk._link is None and not _lk._t.isActive(), "nothing selected: no ants, no timer")
+check(not dp.notes.property("linked") and not dp.gnotes.property("linked"), "nothing selected: no lit border")
+doc.page.groups = [g_ for g_ in doc.page.groups if g_["id"] != doc.page.groups[-1]["id"]]; doc.commit()
 path2 = doc.save(docmod.PROJECTS_DIR / "notes.uxandi"); doc.load(path2)
 check(doc.page.get(d1.id).notes.startswith("Hero"), "notes survive save and load")
 doc.set_selection([d1.id]); app.processEvents(); w.refresh_panels()

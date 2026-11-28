@@ -397,7 +397,8 @@ class Page:
     margins_linked: bool = True        # one value for all four sides
     show_margins: bool = True          # light blue see-through lines
     keep_inside: bool = True           # shapes cannot be moved / resized past the margin lines
-    # groups: [{"id", "name", "members": [shape ids]}]. A shape is in one group at most.
+    # groups: [{"id", "name", "members": [shape ids], "notes"}]. A shape is in one group at most.
+    # A group's notes are its own, apart from its members' notes.
     groups: list = field(default_factory=list)
     notes: str = ""                    # what this page / screen is, written in the Brief tab
     shapes: list[Shape] = field(default_factory=list)
@@ -418,7 +419,7 @@ class Page:
         p.shapes = [Shape.from_dict(s) for s in d.get("shapes", [])]
         ids = {s.id for s in p.shapes}
         p.groups = [dict(id=g.get("id") or new_id(), name=g.get("name", "Group"),
-                         members=[m for m in g.get("members", []) if m in ids])
+                         members=[m for m in g.get("members", []) if m in ids], notes=g.get("notes") or "")
                     for g in (p.groups or [])]
         p.groups = [g for g in p.groups if g["members"]]
         return p

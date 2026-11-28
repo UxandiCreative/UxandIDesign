@@ -370,7 +370,8 @@ def describe_page(t: Target, i: int, pg: Page, shapes: bool = True) -> dict:
         return d
     par = _parents(pg)
     gname = {m: g["name"] for g in pg.groups for m in g["members"]}
-    d["groups"] = [{"id": g["id"], "name": g["name"], "shapes": [pg.get(m).name or m for m in g["members"] if pg.get(m)]}
+    d["groups"] = [{"id": g["id"], "name": g["name"], **({"notes": g["notes"]} if g.get("notes") else {}),
+                    "shapes": [pg.get(m).name or m for m in g["members"] if pg.get(m)]}
                    for g in pg.groups]
     d["shapes"] = [describe_shape(s, pg, par, gname) for s in pg.shapes]
     # an indented outline: the nesting at a glance
@@ -1169,8 +1170,18 @@ def t_set_group(t: Target, a: dict) -> dict:
     name = str(a.get("name") or "").strip()
     if not name:
         raise ToolError("name: the group's name.")
-    members = _shapes(pg, a.get("shapes", []))
     g = next((g for g in pg.groups if g["name"] == name), None)
+    notes = a.get("notes")
+    if notes is not None and not isinstance(notes, str):
+        raise ToolError("notes: text, what the group as a whole is and does.")
+    if "shapes" not in a:
+        if g is None:
+            raise ToolError(f"shapes: no group named {name!r} yet. Give its shapes to make it.")
+        if notes is not None:
+            g["notes"] = notes
+        return {"page": i + 1, "group": name, "notes": g.get("notes", ""),
+                "shapes": [pg.get(m).name for m in g["members"] if pg.get(m)]}
+    members = _shapes(pg, a.get("shapes") or [])
     if not members:
         if g:
             pg.groups.remove(g)
@@ -1180,12 +1191,14 @@ def t_set_group(t: Target, a: dict) -> dict:
         og["members"] = [m for m in og["members"] if m not in ids]
     if g is None:
         from .model import new_id
-        g = {"id": new_id(), "name": name, "members": []}
+        g = {"id": new_id(), "name": name, "members": [], "notes": ""}
         pg.groups.append(g)
+    if notes is not None:
+        g["notes"] = notes
     order = {s.id: n for n, s in enumerate(pg.shapes)}
     g["members"] = sorted(ids, key=lambda m: order[m])
     pg.clean_groups()
-    return {"page": i + 1, "group": name, "shapes": [s.name for s in members]}
+    return {"page": i + 1, "group": name, "notes": g.get("notes", ""), "shapes": [s.name for s in members]}
 
 
 def _unique_name(names: set, base: str) -> str:
@@ -1909,8 +1922,11 @@ TOOLS = [
      _o({"page": PAGE, "shapes": REFS, "axis": {"enum": ["x", "y"]}, "gap": {"type": "number"}, "carry": CARRY}, ["shapes"])),
     ("set_group", t_set_group, True, False,
      "Make or change a named group of shapes (a shape is in one group at most). An empty shapes list removes the group "
-     "(the shapes stay).",
-     _o({"page": PAGE, "name": {"type": "string"}, "shapes": REFS}, ["name", "shapes"])),
+     "(the shapes stay). notes: what the group as a whole is and does, kept apart from its members' own notes. "
+     "Leave shapes out to change only the notes of an existing group.",
+     _o({"page": PAGE, "name": {"type": "string"}, "shapes": REFS,
+         "notes": {"type": "string", "description": "What the group as a whole is and does. Its members keep their own notes."}},
+        ["name"])),
     # ---------------------------------------------------------------- pages and project
     ("add_page", t_add_page, True, False,
      "Add a page (a screen). Size from preset (list_presets: e.g. \"iPhone 16 Pro\", \"Full HD 1920 x 1080\") or "

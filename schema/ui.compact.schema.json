@@ -333,6 +333,10 @@
               "name": {
                 "type": "string"
               },
+              "notes": {
+                "description": "What the group as a whole is and does. Left out: empty.",
+                "type": "string"
+              },
               "members": {
                 "type": "array",
                 "items": {

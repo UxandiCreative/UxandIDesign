@@ -159,6 +159,7 @@ class MainWindow(QMainWindow):
             self.right.set_state(ui.get("right"))
             self.board.show_names = ui.get("names", True)
             self.board.show_helpers = ui.get("helpers", True)
+            self.panels["details"].set_more(ui.get("details_more", True))
             if not ui.get("design_seen"):       # the Design tab is new: open it once
                 if "design" not in self.right.open:
                     self.right.open.insert(0, "design")
@@ -186,6 +187,9 @@ class MainWindow(QMainWindow):
         self._uisave = QTimer(self); self._uisave.setSingleShot(True); self._uisave.setInterval(800)
         self._uisave.timeout.connect(self._save_session)
         self._msg_t = QTimer(self); self._msg_t.setSingleShot(True); self._msg_t.timeout.connect(lambda: self.status.setText(""))
+
+        from .noteslink import NotesLink   # marching ants from the selection to its notes box
+        self.links = NotesLink(self)
 
         self._actions()
         self._scale_key = None
@@ -245,6 +249,8 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self.apply_scale()
+        if getattr(self, "links", None):
+            self.links.poke()
 
     def apply_scale(self, force=False):
         w, h = max(1, self.width()), max(1, self.height())
@@ -284,6 +290,8 @@ class MainWindow(QMainWindow):
         for p in self.panels.values():
             if not p.isHidden():      # open in its column (the window itself may not be on screen yet)
                 p.refresh()
+        if getattr(self, "links", None):
+            self.links.poke()
 
     def say(self, text):
         fm = self.status.fontMetrics()
@@ -310,7 +318,8 @@ class MainWindow(QMainWindow):
         from .colors import RECENTS
         return {"left": self.left.state(), "right": self.right.state(),
                 "names": self.board.show_names, "helpers": self.board.show_helpers,
-                "design_seen": True, "recents": RECENTS.lists, "style": dict(self.doc.style)}
+                "design_seen": True, "recents": RECENTS.lists, "style": dict(self.doc.style),
+                "details_more": self.panels["details"].more_open}
 
     def _save_session(self):
         try:

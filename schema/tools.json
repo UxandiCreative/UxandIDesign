@@ -1115,7 +1115,7 @@
     },
     {
       "name": "set_group",
-      "description": "Make or change a named group of shapes (a shape is in one group at most). An empty shapes list removes the group (the shapes stay).",
+      "description": "Make or change a named group of shapes (a shape is in one group at most). An empty shapes list removes the group (the shapes stay). notes: what the group as a whole is and does, kept apart from its members' own notes. Leave shapes out to change only the notes of an existing group.",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1140,11 +1140,14 @@
               "description": "Shape id or exact name."
             },
             "description": "Shape ids or names."
+          },
+          "notes": {
+            "type": "string",
+            "description": "What the group as a whole is and does. Its members keep their own notes."
           }
         },
         "required": [
-          "name",
-          "shapes"
+          "name"
         ],
         "additionalProperties": false
       },

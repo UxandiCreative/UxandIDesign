@@ -38,7 +38,8 @@ HOW_TO_READ = [
     "'parent' / 'children' and 'layout_tree' show nesting: an element whose box lies completely inside another element's box is its child. "
     "When several boxes hold it, the parent is the smallest one drawn beneath it, unless a filled box drawn over that one "
     "(a scrim, an overlay) also holds it.",
-    "'groups' are sets of elements the user grouped, by name.",
+    "'groups' are sets of elements the user grouped, by name. A group's 'notes' say what the group as a whole is and does; "
+    "they are separate from each member's own notes.",
     "'elements_without_notes' (per page, and for the whole project in 'summary') lists the elements whose 'notes' field is empty. "
     "'summary' also counts them, says whether 'project.brief' is empty and lists pages whose 'notes' are empty.",
     "'margins' are the distances from the canvas edges set by the user; 'margins.safe_area' is the box inside them.",
@@ -191,7 +192,7 @@ def page_export(page: Page, index: int, image_map: dict | None = None) -> dict:
     for g in page.groups:
         mb = [boxes[m] for m in g["members"] if m in boxes]
         u = (min(x[0] for x in mb), min(x[1] for x in mb), max(x[2] for x in mb), max(x[3] for x in mb)) if mb else (0, 0, 0, 0)
-        groups.append({"id": g["id"], "name": g["name"], "members": list(g["members"]),
+        groups.append({"id": g["id"], "name": g["name"], "notes": g.get("notes") or "", "members": list(g["members"]),
                        "member_names": [next((s.name for s in shapes if s.id == m), m) for m in g["members"]],
                        "bounds": _box(u)})
 
@@ -256,7 +257,8 @@ COMPACT_HOW_TO_READ = [
     "'elements' are listed in stacking order: the first is at the back, each later one is drawn on top of the earlier ones.",
     "'parent' is the id of the element whose box completely holds this one (nesting; when several do, the smallest one "
     "drawn beneath it that no filled box in between covers). No 'parent' means it sits directly on the canvas.",
-    "'group' is the name of the user's group the element belongs to; 'groups' lists each group's members by id.",
+    "'group' is the name of the user's group the element belongs to; 'groups' lists each group's members by id, "
+    "with the group's own 'notes' (what the group as a whole is and does) when it has any.",
     "Colours are hex #RRGGBB. An opacity is given only when it is below 1 (e.g. 'fill_opacity').",
     "Border width is in pixels and sits inside the element's box. 'corner_radius' rounds the corners, in pixels.",
     "'contents' with type 'image' is a picture shown inside the element, clipped to its rounded box. 'file' is relative to this JSON file. "
@@ -347,7 +349,8 @@ def compact_export(full: dict) -> dict:
         if pg["elements_without_notes"]:
             p["elements_without_notes"] = [e["name"] for e in pg["elements_without_notes"]]
         if pg["groups"]:
-            p["groups"] = [{"name": g["name"], "members": g["members"]} for g in pg["groups"]]
+            p["groups"] = [{"name": g["name"], **({"notes": g["notes"]} if (g.get("notes") or "").strip() else {}),
+                            "members": g["members"]} for g in pg["groups"]]
         p["elements"] = [_compact_element(e) for e in pg["elements"]]
         pages.append(p)
     pj, sm = full["project"], full["summary"]
@@ -386,7 +389,8 @@ def _expand_compact(data: dict) -> dict:
         p = {**pg, "notes": pg.get("notes", ""),
              "margins": {**{k: 0 for k in ("top", "right", "bottom", "left")}, **pg.get("margins", {})},
              "grid": {"dot_spacing": pg.get("grid", {}).get("dot_spacing", 20), "dots_visible": True},
-             "groups": [{"name": g["name"], "members": g["members"]} for g in pg.get("groups", [])],
+             "groups": [{"name": g["name"], "notes": g.get("notes", ""), "members": g["members"]}
+                        for g in pg.get("groups", [])],
              "elements": []}
         for z, e in enumerate(pg.get("elements", []), start=1):
             st = e.get("style", {})
@@ -518,8 +522,8 @@ def import_export(data: dict, base_dir: Path | None = None) -> Project:
                           dx=float((ct.get("offset") or {}).get("x", 0)), dy=float((ct.get("offset") or {}).get("y", 0)))
                 s.contents = c2
             pg.shapes.append(s)
-        pg.groups = [{"id": g.get("id") or new_id(), "name": g.get("name", "Group"), "members": list(g.get("members", []))}
-                     for g in pd.get("groups", [])]
+        pg.groups = [{"id": g.get("id") or new_id(), "name": g.get("name", "Group"), "members": list(g.get("members", [])),
+                      "notes": g.get("notes") or ""} for g in pd.get("groups", [])]
         pg.clean_groups()
         pr.pages.append(pg)
     if not pr.pages:

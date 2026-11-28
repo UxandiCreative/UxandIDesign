@@ -162,8 +162,8 @@ def export_schema() -> dict:
                     ["dot_spacing", "dots_visible"]),
         "element_count": I,
         "elements_without_notes": arr(obj({"id": S, "name": S, "type": S}, ["id", "name", "type"])),
-        "groups": arr(obj({"id": S, "name": S, "members": arr(S), "member_names": arr(S), "bounds": ref("box")},
-                          ["id", "name", "members", "member_names", "bounds"])),
+        "groups": arr(obj({"id": S, "name": S, "notes": d(S, "What the group as a whole is and does, written by the user. Separate from its members' notes."), "members": arr(S), "member_names": arr(S),
+                           "bounds": ref("box")}, ["id", "name", "notes", "members", "member_names", "bounds"])),
         "layout_tree": arr(ref("tree_node"), "The nesting as a tree, back to front."),
         "elements": arr(ref("element"), "Every element in stacking order (back first)."),
     }, ["index", "id", "name", "notes", "canvas", "margins", "grid", "element_count", "elements_without_notes",
@@ -244,7 +244,8 @@ def compact_schema() -> dict:
         "grid": obj({"dot_spacing": I}, ["dot_spacing"]),
         "element_count": I,
         "elements_without_notes": arr(S, "Names of elements whose notes are empty."),
-        "groups": arr(obj({"name": S, "members": arr(S)}, ["name", "members"])),
+        "groups": arr(obj({"name": S, "notes": d(S, "What the group as a whole is and does. Left out: empty."),
+                           "members": arr(S)}, ["name", "members"])),
         "elements": arr(ref("element"), "Stacking order: the first is at the back."),
     }, ["index", "id", "name", "canvas", "grid", "element_count", "elements"])
     image = dict(IMAGE_EXPORT)
@@ -297,7 +298,7 @@ def project_schema() -> dict:
     page = obj({"name": S, "id": S, "width": I, "height": I, "preset": S, "background": HEX, "dots": B, "dot_spacing": I,
                 "margins": arr(N, "[top, right, bottom, left], px.", minItems=4, maxItems=4),
                 "margins_linked": B, "show_margins": B, "keep_inside": B,
-                "groups": arr(obj({"id": S, "name": S, "members": arr(S)}, ["id", "name", "members"])),
+                "groups": arr(obj({"id": S, "name": S, "members": arr(S), "notes": S}, ["id", "name", "members"])),
                 "notes": S, "shapes": arr({"oneOf": [ref("rect"), ref("line"), ref("path")]}, "Stacking order: back first.")},
                ["name", "id", "width", "height", "shapes"])
     return {
